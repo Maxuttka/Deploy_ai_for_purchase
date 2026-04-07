@@ -1,0 +1,722 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Черновик заказа | Procurement Dashboard</title>
+    <style>
+        :root {
+            --primary: #2424eb;
+            --primary-hover: #1d1db8;
+            --bg: #f6f6f8;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --success: #16a34a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(36, 36, 235, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 400;
+            padding: 4px 0;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            font-weight: 600;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 10px 14px;
+            width: 240px;
+            color: var(--text-muted);
+            font-size: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(36, 36, 235, 0.15), rgba(36, 36, 235, 0.05));
+            border: 2px solid var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .draft-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .draft-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .draft-title p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .draft-meta {
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        .meta-group,
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .meta-value {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .meta-total .meta-label {
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .total-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface);
+            gap: 16px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            text-align: left;
+            padding: 14px 24px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .item-name {
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .item-sku {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .num-cell {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .supplier-select {
+            width: 100%;
+            min-width: 220px;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .supplier-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(36, 36, 235, 0.12);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .footer-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .empty-state,
+        .error-state {
+            padding: 32px 24px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .error-state {
+            color: var(--danger);
+        }
+
+        .save-status {
+            padding: 12px 24px;
+            font-size: 14px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+        }
+
+        .save-status.success {
+            color: var(--success);
+        }
+
+        .save-status.error {
+            color: var(--danger);
+        }
+
+        @media (max-width: 900px) {
+            .header,
+            .container {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-left,
+            .header-right,
+            .draft-header,
+            .table-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .draft-meta {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">📦</div>
+                <span class="logo-text">Procurement Dashboard</span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Остатки</a>
+                <a href="index.html" class="nav-link">Рекомендации</a>
+                <a href="drafts.html" class="nav-link active">Заказы</a>
+                <a href="#" class="nav-link">Поставщики</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <input type="text" class="search-box" placeholder="Глобальный поиск..." />
+            <div class="user-avatar"></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="draft-header">
+                <div class="draft-title">
+                    <h1 id="draft-title">Загрузка черновика...</h1>
+                    <p>Описание существующего черновика закупки</p>
+                </div>
+
+                <div class="draft-meta">
+                    <div class="meta-group">
+                        <div class="meta-item">
+                            <span class="meta-label">Дата создания</span>
+                            <span class="meta-value" id="draft-created-at">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Статус</span>
+                            <span class="status-badge" id="draft-status">-</span>
+                        </div>
+                    </div>
+                    <div class="meta-group">
+                        <div class="meta-item">
+                            <span class="meta-label">Поставщик</span>
+                            <span class="meta-value" id="draft-supplier">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Позиций</span>
+                            <span class="meta-value" id="draft-items-count">0</span>
+                        </div>
+                    </div>
+                    <div class="meta-item meta-total">
+                        <span class="meta-label">Итоговая сумма</span>
+                        <span class="total-value" id="grand-total">0 ₽</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <div class="card-title">Товары в черновике</div>
+                <button id="back-link-top" class="btn btn-outline"></button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 28%;">Товар</th>
+                            <th style="width: 14%;">Артикул</th>
+                            <th class="num-cell" style="width: 10%;">Остаток</th>
+                            <th class="num-cell" style="width: 12%;">Ср. продажи / день</th>
+                            <th class="num-cell" style="width: 10%;">Рек. кол-во</th>
+                            <th style="width: 18%;">Поставщик</th>
+                            <th style="width: 8%;">Срочность</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-table">
+                        <tr>
+                            <td colspan="7" class="empty-state">Загрузка товаров...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="save-status" class="save-status"></div>
+
+            <div class="footer-actions">
+                <button id="save-btn" class="btn btn-primary">Сохранить</button>
+                <button id="back-link-bottom" class="btn btn-secondary">К списку черновиков</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supplierOptions = [
+            "КомпактТул",
+            "Амперкот",
+            "Синардком",
+            "Амперка",
+            "ОнЛайн Трейд",
+            "Базальт СПО",
+            "Пластик CyberFiber",
+            "Материалы Ateco",
+            "клей ТриДэшнки, пластик не Cyber Fiber",
+            "Товары и запчасти для принтеров PICASO 3D",
+            "Эвольвектор",
+            "LTParts",
+            "Youbot",
+            "Книги Алист, БХВ, ИГТ (Издательская группа Точка), Фолиант",
+            "Книги Галактика, ДМК, СОЛОН-пресс, Вильямс (Williams)",
+            "Книги Назина",
+            "Книги Наука и Техника",
+            "ДиПринт (Диджитал Принт)",
+            "Наборы, детали ЗНАТОК",
+            "Игнатов",
+            "Альт, Базальт, Alt, Basealt",
+            "Икс-ком, Xcom",
+            "Батарейки VARTA и т.п.",
+            "USB-флешки, кармашки для флешек, коробки для DVD",
+            "Geegrow",
+            "Chipster",
+            "Chipster (Китай)",
+            "Onpad",
+            "Скотч фирменный",
+            "Сейф-пакеты ПостПак",
+            "Заправка картриджей"
+        ];
+
+        let currentDraft = null;
+
+        function formatMoney(value) {
+            return `${Number(value || 0).toLocaleString("ru-RU")} ₽`;
+        }
+
+        function formatNumber(value, digits = 0) {
+            return Number(value || 0).toLocaleString("ru-RU", {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits
+            });
+        }
+
+        function getStatusLabel(status) {
+            if (status === "in_progress") {
+                return "В работе";
+            }
+            return "Черновик";
+        }
+
+        function getUrgencyLabel(urgency) {
+            const labels = {
+                high: "Высокая",
+                medium: "Средняя",
+                low: "Низкая"
+            };
+            return labels[urgency] || urgency || "-";
+        }
+
+        function renderSupplierSelect(selectedSupplier, index) {
+            const normalizedSupplier = selectedSupplier || "";
+            const options = [
+                '<option value="">Выберите поставщика...</option>',
+                ...supplierOptions.map((supplier) => {
+                    const selected = supplier === normalizedSupplier ? " selected" : "";
+                    return `<option value="${supplier}"${selected}>${supplier}</option>`;
+                })
+            ];
+
+            return `<select class="supplier-select" data-index="${index}">${options.join("")}</select>`;
+        }
+
+        function renderItems(items) {
+            const tbody = document.getElementById("items-table");
+
+            if (!items.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">В этом черновике пока нет товаров</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = items.map((item, index) => `
+                <tr>
+                    <td>
+                        <div class="item-name">${item.name || "Без названия"}</div>
+                        <div class="item-sku">ID: ${item.product_id || "-"}</div>
+                    </td>
+                    <td>${item.article || "-"}</td>
+                    <td class="num-cell">${formatNumber(item.current_stock)}</td>
+                    <td class="num-cell">${formatNumber(item.avg_daily_sales, 2)}</td>
+                    <td class="num-cell">${formatNumber(item.recommended_order_qty)}</td>
+                    <td>${renderSupplierSelect(item.supplier, index)}</td>
+                    <td>${getUrgencyLabel(item.urgency)}</td>
+                </tr>
+            `).join("");
+        }
+
+        function collectUpdatedItems() {
+            if (!currentDraft || !Array.isArray(currentDraft.items)) {
+                return [];
+            }
+
+            const items = currentDraft.items.map(item => ({ ...item }));
+            const selects = document.querySelectorAll(".supplier-select");
+
+            selects.forEach((select) => {
+                const index = Number(select.dataset.index);
+                if (!Number.isNaN(index) && items[index]) {
+                    items[index].supplier = select.value || "";
+                }
+            });
+
+            return items;
+        }
+
+        function setSaveStatus(message, type = "") {
+            const el = document.getElementById("save-status");
+            el.textContent = message || "";
+            el.className = "save-status";
+            if (type) {
+                el.classList.add(type);
+            }
+        }
+
+        async function saveDraft() {
+            const params = new URLSearchParams(window.location.search);
+            const draftId = params.get("id");
+
+            if (!draftId || !currentDraft) {
+                setSaveStatus("Не удалось сохранить черновик", "error");
+                return false;
+            }
+
+            const updatedItems = collectUpdatedItems();
+
+            try {
+                const response = await fetch(`/api/drafts/${draftId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        supplier: currentDraft.supplier || "Не указан",
+                        items: updatedItems
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || "Ошибка сохранения");
+                }
+
+                setSaveStatus(data.message || "Черновик сохранён", "success");
+                return true;
+            } catch (error) {
+                console.error("Ошибка сохранения черновика:", error);
+                setSaveStatus("Не удалось сохранить изменения", "error");
+                return false;
+            }
+        }
+
+        async function saveDraftAndGoBack() {
+            const ok = await saveDraft();
+            if (ok) {
+                window.location.href = "drafts.html";
+            }
+        }
+
+        async function loadDraft() {
+            const params = new URLSearchParams(window.location.search);
+            const draftId = params.get("id");
+            const tbody = document.getElementById("items-table");
+
+            if (!draftId) {
+                document.getElementById("draft-title").textContent = "Черновик не выбран";
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="error-state">Не указан id черновика</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/drafts/${draftId}`);
+                if (!response.ok) {
+                    throw new Error("Не удалось загрузить черновик");
+                }
+
+                const draft = await response.json();
+                currentDraft = draft;
+
+                const items = Array.isArray(draft.items) ? draft.items : [];
+
+                document.title = `Черновик заказа №${draft.id} | Procurement Dashboard`;
+                document.getElementById("draft-title").textContent = `Черновик заказа №${draft.id}`;
+                document.getElementById("draft-created-at").textContent = draft.created_at || "-";
+                document.getElementById("draft-status").textContent = getStatusLabel(draft.status);
+                document.getElementById("draft-supplier").textContent = draft.supplier || "Не указан";
+                document.getElementById("draft-items-count").textContent = items.length;
+                document.getElementById("grand-total").textContent = formatMoney(draft.total_amount);
+
+                renderItems(items);
+            } catch (error) {
+                console.error("Ошибка загрузки черновика:", error);
+                document.getElementById("draft-title").textContent = `Черновик заказа №${draftId}`;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="error-state">Не удалось загрузить данные черновика</td>
+                    </tr>
+                `;
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadDraft();
+
+            document.getElementById("save-btn").addEventListener("click", saveDraft);
+            document.getElementById("back-link-top").addEventListener("click", saveDraftAndGoBack);
+            document.getElementById("back-link-bottom").addEventListener("click", saveDraftAndGoBack);
+        });
+    </script>
+</body>
+</html>;

@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Procurement Dashboard | Рекомендации</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8f6f6;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --high: #fef3c7;
+            --medium: #dbeafe;
+            --low: #dcfce7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(36, 36, 235, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            color: #0f172a;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-link {
+            color: #475569;
+            font-size: 14px;
+            font-weight: 400;
+            padding: 4px 0;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-link:hover {
+            color: #2424eb;
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            font-weight: 700;
+            border-bottom: 2px solid #2424eb;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 12px 16px;
+            width: 256px;
+            color: #6b7280;
+            font-size: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(to left, rgba(36, 36, 235, 0.2), rgba(36, 36, 235, 0.2));
+            border: 2px solid #ffffff;
+            box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card,
+        .saved-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .stat-label,
+        .section-title {
+            font-size: 0.95rem;
+            color: var(--text);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .stat-delta {
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+
+        .delta-up {
+            color: var(--success);
+        }
+
+        .saved-row,
+        .filters,
+        .upload-card {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+
+
+            align-items: center;
+        }
+
+        .filters,
+        .saved-card,
+        .upload-card,
+        .table-container {
+            margin-bottom: 24px;
+        }
+
+        .saved-row select,
+        .saved-row button,
+        .filters select,
+        .filters button,
+        .upload-card select,
+        .upload-card button {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .saved-row button.primary,
+        .filters button.primary,
+        .upload-card button {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .saved-row button.primary:hover,
+        .filters button.primary:hover,
+        .upload-card button:hover {
+            background: var(--primary-hover);
+        }
+
+        .saved-meta {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .upload-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .upload-card label {
+            font-weight: 500;
+            margin-right: 8px;
+        }
+
+        .upload-card input[type="file"] {
+            max-width: 300px;
+        }
+
+        .upload-status {
+            margin-left: auto;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        thead {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            text-align: left;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background: #f1f5f9;
+        }
+
+        .product-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .product-name {
+            font-weight: 500;
+        }
+
+        .product-cat {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .urgency-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .urgency-high {
+            background: var(--high);
+            color: #92400e;
+        }
+
+        .urgency-medium {
+            background: var(--medium);
+            color: #1e40af;
+        }
+
+        .urgency-low {
+            background: var(--low);
+            color: #166534;
+        }
+
+        .action-btn {
+            padding: 6px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover {
+            background: var(--bg);
+        }
+
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .pagination button {
+            padding: 6px 12px;
+            margin: 0 4px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+
+
+        }
+
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--border);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: help;
+            margin-left: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-wrap: wrap;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            .header-left,
+            .header-right {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .filters,
+            .upload-card,
+            .saved-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .upload-status {
+                margin-left: 0;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th,
+            td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">📦</div>
+                <span class="logo-text">Procurement Dashboard</span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Остатки</a>
+                <a href="index.html" class="nav-link active">Рекомендации</a>
+                <a href="/drafts.html" class="nav-link">Заказы</a>
+                <a href="#" class="nav-link">Поставщики</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <input type="text" class="search-box" placeholder="Глобальный поиск..." />
+            <div class="user-avatar"></div>
+        </div>
+    </header>
+
+    <main>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Товаров к заказу</div>
+                <div class="stat-value">142</div>
+                <div class="stat-delta delta-up">↑ +12% vs LW</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Оценочный бюджет</div>
+                <div class="stat-value">$42,500</div>
+                <div class="stat-delta delta-up">↑ +5% vs LW</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Средний срок поставки</div>
+                <div class="stat-value">14 дн.</div>
+                <div class="stat-delta">⏱️ Обновляется ежедневно</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Срочные позиции</div>
+                <div class="stat-value" style="color: var(--danger);">28</div>
+                <div class="stat-delta">⚠️ Требуют внимания</div>
+            </div>
+        </div>
+
+
+        <div class="upload-card">
+            <label>📤 Загрузка CSV:</label>
+            <input type="file" id="fileInput" accept=".csv" />
+            <select id="kindSelect">
+                <option value="orders">Заказы</option>
+                <option value="collections">Коллекции</option>
+                <option value="stocks">Остатки</option>
+                <option value="prices">Цены</option>
+            </select>
+            <button onclick="uploadFile()">Загрузить</button>
+            <span id="status" class="upload-status"></span>
+        </div>
+
+        <div class="saved-card">
+            <div class="section-title">Сохранённые загрузки</div>
+            <div class="saved-row">
+                <select id="savedJobsSelect">
+                    <option value="">Нет сохранённых загрузок</option>
+                </select>
+                <button class="primary" onclick="openSelectedJob()">Открыть</button>
+                <span id="savedJobMeta" class="saved-meta"></span>
+            </div>
+        </div>
+
+        <div class="filters">
+            <select id="categoryFilter">
+                <option value="">Все категории</option>
+                <option>Ноутбуки и техника</option>
+                <option>Аксессуары</option>
+                <option>Мониторы</option>
+            </select>
+            <select id="supplierFilter">
+                <option value="">Все поставщики</option>
+                <option>TechSupply Co</option>
+                <option>GlobalParts Ltd</option>
+            </select>
+            <select id="urgencyFilter">
+                <option value="">Все статусы</option>
+                <option>Высокая</o ption>
+                <option>Средняя</option>
+                <option>Низкая</option>
+            </select>
+            <button class="primary" onclick="applyFilters()">Применить</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название товара</th>
+                        <th>Артикул</th>
+                        <th>Склад</th>
+                        <th>Ср. продажи в день</th>
+                        <th>Прогноз 1 мес.</th>
+                        <th>Прогноз 6 мес.</th>
+                        <th>Прогноз 12 мес.</th>
+                        <th>Рек. кол-во <span class="info-icon" title="Временная логика для прототипа">ⓘ</span></th>
+                        <th>Срочность</th>
+                        <th>Действие</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="10" style="text-align:center; color: var(--text-muted); padding: 18px 0;">
+                            Здесь будут отображаться результаты прогноза после загрузки CSV и обработки.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="table-footer">
+                <span>Показано 0 из 0 рекомендаций</span>
+                <div class="pagination">
+                    <button disabled>← Назад</button>
+                    <button disabled>Вперёд →</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let savedJobs = [];
+
+        function formatJobLabel(job) {
+            const date = new Date(job.created_at).toLocaleString("ru-RU");
+            return `${job.filename} | ${job.kind} | ${job.status} | ${date}`;
+        }
+
+        function getUrgencyLabel(urgency) {
+            switch ((urgency || "").toLowerCase()) {
+                case "high":
+                    return "Высокая";
+                case "medium":
+                    return "Средняя";
+                case "low":
+                    return "Низкая";
+                default:
+                    return "Низкая";
+            }
+        }
+
+        async function loadSavedJobs(autoOpenLatest = true) {
+            const select = document.getElementById("savedJobsSelect");
+            const meta = document.getElementById("savedJobMeta");
+
+            try {
+                const response = await fetch("/api/imports");
+                if (!response.ok) {
+                    select.innerHTML = '<option value="">Не удалось загрузить список</option>';
+                    return;
+                }
+
+                const jobs = await response.json();
+                savedJobs = Array.isArray(jobs) ? jobs : [];
+
+                if (savedJobs.length === 0) {
+                    select.innerHTML = '<option value="">Нет сохранённых загрузок</option>';
+                    meta.textContent = "";
+                    return;
+                }
+
+                select.innerHTML = savedJobs.map(job =>
+                    `<option value="${job.job_id}">${formatJobLabel(job)}</option>`
+                ).join("");
+
+                updateSavedJobMeta();
+
+                if (autoOpenLatest) {
+                    const latestDone = savedJobs.find(job => job.status === "done");
+                    if (latestDone) {
+                        select.value = latestDone.job_id;
+                        updateSavedJobMeta();
+                        await fetchForecast(latestDone.job_id);
+                    }
+                }
+            } catch (err) {
+                console.error("Ошибка получения списка загрузок:", err);
+                select.innerHTML = '<option value="">Ошибка загрузки списка</option>';
+            }
+        }
+
+        function updateSavedJobMeta() {
+            const select = document.getElementById("savedJobsSelect");
+            const meta = document.getElementById("savedJobMeta");
+            const job = savedJobs.find(x => x.job_id === select.value);
+
+            if (!job) {
+                meta.textContent = "";
+                return;
+            }
+
+            meta.textContent = `Файл: ${job.filename} | Тип: ${job.kind} | Статус: ${job.status}`;
+        }
+
+        async function openSelectedJob() {
+            const select = document.getElementById("savedJobsSelect");
+            const jobId = select.value;
+
+            if (!jobId) {
+                alert("Выберите сохранённую загрузку");
+                return;
+            }
+
+            const job = savedJobs.find(x => x.job_id === jobId);
+            const statusText = document.getElementById("status");
+
+            if (!job) {
+                return;
+            }
+
+            if (job.status === "done") {
+                statusText.innerText = `✅ Открыт сохранённый результат: ${job.filename}`;
+                statusText.style.color = "var(--success)";
+                await fetchForecast(jobId);
+            } else if (job.status === "failed") {
+                statusText.innerText = `❌ У выбранной загрузки ошибка`;
+                statusText.style.color = "var(--danger)";
+                await fetchErrors(jobId);
+            } else {
+                statusText.innerText = `🔄 У выбранной загрузки статус: ${job.status}`;
+                statusText.style.color = "var(--text-muted)";
+            }
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const kind = document.getElementById("kindSelect").value;
+            const status = document.getElementById("status");
+
+            if (fileInput.files.length === 0) {
+                alert("Выберите файл");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("kind", kind);
+
+            status.innerText = "⏳ Загрузка...";
+            status.style.color = "var(--text-muted)";
+
+            try {
+                const response = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.job_id) {
+                    status.innerText = `✅ Отправлено. Job ID: ${data.job_id}`;
+                    status.style.color = "var(--success)";
+                    checkStatus(data.job_id);
+                } else {
+                    status.innerText = "❌ Ошибка: " + (data.error || "Неизвестная ошибка");
+                    status.style.color = "var(--danger)";
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                status.innerText = "❌ Ошибка соединения с сервером";
+                status.style.color = "var(--danger)";
+            }
+        }
+
+        async function checkStatus(jobId) {
+            const statusText = document.getElementById("status");
+
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/status/${jobId}`);
+                    const data = await response.json();
+
+                    statusText.innerText = `🔄 Job ${jobId}: ${data.status}`;
+
+                    if (data.status === "done") {
+                        clearInterval(interval);
+                        statusText.innerText = `✅ Job ${jobId}: завершено!`;
+                        statusText.style.color = "var(--success)";
+                        await loadSavedJobs(false);
+                        document.getElementById("savedJobsSelect").value = jobId;
+                        updateSavedJobMeta();
+                        await fetchForecast(jobId);
+                    } else if (data.status === "failed") {
+                        clearInterval(interval);
+                        statusText.style.color = "var(--danger)";
+                        await loadSavedJobs(false);
+                        document.getElementById("savedJobsSelect").value = jobId;
+                        updateSavedJobMeta();
+                        await fetchErrors(jobId);
+                    }
+                } catch (err) {
+                    console.error("Status check error:", err);
+                }
+            }, 2000);
+        }
+
+        async function fetchForecast(jobId) {
+            try {
+                const response = await fetch(`/api/result/${jobId}`);
+
+                if (!response.ok) {
+                    console.warn(`Не удалось получить результат из бэкенда: ${response.status}`);
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!data.items || data.items.length === 0) {
+                    renderForecast([]);
+                    return;
+                }
+
+                renderForecast(data.items);
+            } catch (err) {
+                console.error("Ошибка получения прогноза:", err);
+            }
+        }
+
+        async function fetchErrors(jobId) {
+            const statusText = document.getElementById("status");
+
+            try {
+                const response = await fetch(`/api/errors/${jobId}`);
+                if (!response.ok) {
+                    statusText.innerText = `❌ Job ${jobId}: ошибка`;
+                    return;
+                }
+
+                const errors = await response.json();
+
+                if (Array.isArray(errors) && errors.length > 0) {
+                    statusText.innerText = `❌ ${errors[0].message}`;
+                } else {
+                    statusText.innerText = `❌ Job ${jobId}: ошибка`;
+                }
+            } catch (err) {
+                console.error("Ошибка получения ошибок:", err);
+                statusText.innerText = `❌ Job ${jobId}: ошибка`;
+            }
+        }
+
+        function renderForecast(items) {
+            const tableBody = document.getElementById("tableBody");
+
+            if (!items || items.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--text-muted); padding: 40px;">Нет данных для отображения.</td></tr>';
+                const summary = document.querySelector(".table-footer span");
+                if (summary) {
+                    summary.textContent = "Показано 0 из 0 рекомендаций";
+                }
+                return;
+            }
+
+            tableBody.innerHTML = "";
+
+            const summary = document.querySelector(".table-footer span");
+            if (summary) {
+                summary.textContent = `Показано ${items.length} из ${items.length} рекомендаций`;
+            }
+
+            items.forEach((item, index) => {
+                const urgency = (item.urgency || "low").toLowerCase();
+                const urgencyLabel = getUrgencyLabel(urgency);
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+            <td class="product-cell">
+                <span class="product-name">${item.name || "-"}</span>
+                <span class="product-cat">${item.product_id || "-"}</span>
+            </td>
+            <td>${item.article || "-"}</td>
+            <td>${item.current_stock ?? 0}</td>
+            <td>${item.avg_daily_sales ?? 0}/день</td>
+            <td>${Math.round(item["ожидаемый спрос в следующем месяце"] ?? 0)}</td>
+            <td>${Math.round(item["ожидаемый спрос в следующем полугодии"] ?? 0)}</td>
+            <td>${Math.round(item["ожидаемый спрос в следующем году"] ?? 0)}</td>
+            <td>${item.recommended_order_qty ?? 0} шт.</td>
+            <td><span class="urgency-badge urgency-${urgency}">${urgencyLabel}</span></td>
+            <td><button class="action-btn" id="draft-btn-${index}">В черновик</button></td>
+        `;
+                tableBody.appendChild(row);
+
+                const btn = document.getElementById(`draft-btn-${index}`);
+                btn.addEventListener("click", () => addToDraftByItem(item));
+            });
+        }
+
+        function applyFilters() {
+            const cat = document.getElementById("categoryFilter").value;
+            const sup = document.getElementById("supplierFilter").value;
+            const urg = document.getElementById("urgencyFilter").value;
+
+            console.log("Filters applied:", {
+                category: cat,
+                supplier: sup,
+                urgency: urg
+            });
+
+            alert("Фильтры применены (демо)");
+        }
+
+        async function addToDraftByItem(item) {
+            try {
+                const payload = {
+                    product_id: item.product_id || "",
+                    name: item.name || "Без названия",
+                    article: item.article || item.product_id || "",
+                    current_stock: item.current_stock ?? 0,
+                    avg_daily_sales: item.avg_daily_sales ?? 0,
+                    recommended_order_qty: item.recommended_order_qty ?? 0,
+                    urgency: item.urgency || "low",
+                    forecast_1m: item["ожидаемый спрос в следующем месяце"] ?? 0,
+                    forecast_6m: item["ожидаемый спрос в следующем полугодии"] ?? 0,
+                    forecast_12m: item["ожидаемый спрос в следующем году"] ?? 0
+                };
+
+                const response = await fetch("/api/drafts/items", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert("❌ Не удалось добавить товар в черновик");
+                    console.error(data);
+                    return;
+                }
+
+                alert(`✅ Товар добавлен в черновик №${data.draft_id}`);
+            } catch (err) {
+                console.error("Ошибка добавления в черновик:", err);
+                alert("❌ Ошибка добавления в черновик");
+            }
+        }
+
+
+
+
+
+        document.getElementById("savedJobsSelect").addEventListener("change", updateSavedJobMeta);
+
+        document.querySelectorAll(".info-icon").forEach(icon => {
+            icon.addEventListener("mouseenter", (e) => {
+                const title = e.target.getAttribute("title");
+                if (title) {
+                    const tooltip = document.createElement("div");
+                    tooltip.className = "tooltip";
+                    tooltip.innerText = title;
+                    tooltip.style.cssText = `
+                        position: absolute;
+                        background: #1e293b;
+                        color: white;
+                        padding: 6px 10px;
+                        border-radius: 6px;
+                        font-size: 0.8rem;
+                        max-width: 200px;
+                        z-index: 1000;
+                        margin-top: 5px;
+                    `;
+                    document.body.appendChild(tooltip);
+                    const rect = e.target.getBoundingClientRect();
+                    tooltip.style.left = rect.left + "px";
+                    tooltip.style.top = (rect.bottom + 5) + "px";
+                    e.target._tooltip = tooltip;
+                }
+            });
+
+            icon.addEventListener("mouseleave", (e) => {
+                if (e.target._tooltip) {
+                    e.target._tooltip.remove();
+                    e.target._tooltip = null;
+                }
+            });
+        });
+
+        loadSavedJobs(true);
+    </script>
+
+</body>
+
+</html>
