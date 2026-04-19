@@ -6,4 +6,7 @@ pydantic-settings
 python-multipart
 pandas
 numpy
-scikit-learn
+scikit-learn==1.6.1
+catboost
+joblib
+openpyxl

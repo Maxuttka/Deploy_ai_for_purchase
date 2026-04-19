@@ -241,7 +241,12 @@
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 12px;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .table-container table {
+            min-width: 1180px;
         }
 
         table {
@@ -319,6 +324,13 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        th:last-child,
+        td:last-child {
+            white-space: nowrap;
+            width: 1%;
         }
 
         .action-btn:hover {
@@ -414,10 +426,9 @@
                 <span class="logo-text">Procurement Dashboard</span>
             </div>
             <nav class="nav">
-                <a href="index.html" class="nav-link">Остатки</a>
                 <a href="index.html" class="nav-link active">Рекомендации</a>
                 <a href="/drafts.html" class="nav-link">Заказы</a>
-                <a href="#" class="nav-link">Поставщики</a>
+                <a href="suppliers.html" class="nav-link">Поставщики</a>
             </nav>
         </div>
         <div class="header-right">
@@ -430,23 +441,23 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Товаров к заказу</div>
-                <div class="stat-value">142</div>
-                <div class="stat-delta delta-up">↑ +12% vs LW</div>
+                <div class="stat-value" id="recommendedCount">0</div>
+                <div class="stat-delta">Обновляется по текущей выборке</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Оценочный бюджет</div>
-                <div class="stat-value">$42,500</div>
-                <div class="stat-delta delta-up">↑ +5% vs LW</div>
+                <div class="stat-label">Бюджет к закупке</div>
+                <div class="stat-value" id="procurementBudget">-</div>
+                <div class="stat-delta">По текущим рекомендациям</div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">Средний срок поставки</div>
-                <div class="stat-value">14 дн.</div>
-                <div class="stat-delta">⏱️ Обновляется ежедневно</div>
+                <div class="stat-label">Доля отмен</div>
+                <div class="stat-value" id="cancelRate">-</div>
+                <div class="stat-delta">По загруженной истории заказов</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">Срочные позиции</div>
-                <div class="stat-value" style="color: var(--danger);">28</div>
-                <div class="stat-delta">⚠️ Требуют внимания</div>
+                <div class="stat-value" id="urgentCount" style="color: var(--danger);">0</div>
+                <div class="stat-delta ">⚠️ Высокая срочность</div>
             </div>
         </div>
 
@@ -456,9 +467,9 @@
             <input type="file" id="fileInput" accept=".csv" />
             <select id="kindSelect">
                 <option value="orders">Заказы</option>
-                <option value="collections">Коллекции</option>
+                
                 <option value="stocks">Остатки</option>
-                <option value="prices">Цены</option>
+                
             </select>
             <button onclick="uploadFile()">Загрузить</button>
             <span id="status" class="upload-status"></span>
@@ -548,6 +559,57 @@
                     return "Низкая";
                 default:
                     return "Низкая";
+            }
+        }
+
+        function formatCurrency(value) {
+            const amount = Number(value);
+            if (!Number.isFinite(amount)) {
+                return "-";
+            }
+
+            return new Intl.NumberFormat("ru-RU", {
+                style: "currency",
+                currency: "RUB",
+                maximumFractionDigits: 0,
+            }).format(amount);
+        }
+
+        function formatPercent(value) {
+            const amount = Number(value);
+            if (!Number.isFinite(amount)) {
+                return "-";
+            }
+
+            return `${new Intl.NumberFormat("ru-RU", {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2,
+            }).format(amount)}%`;
+        }
+
+        function updateStats(items, summary = {}) {
+            const recommendedCount = document.getElementById("recommendedCount");
+            const procurementBudget = document.getElementById("procurementBudget");
+            const cancelRate = document.getElementById("cancelRate");
+            const urgentCount = document.getElementById("urgentCount");
+            const safeItems = Array.isArray(items) ? items : [];
+            const recommended = safeItems.filter(item => Number(item.recommended_order_qty ?? 0) > 0).length;
+            const urgent = safeItems.filter(item => (item.urgency || "").toLowerCase() === "high").length;
+
+            if (recommendedCount) {
+                recommendedCount.textContent = String(recommended);
+            }
+
+            if (procurementBudget) {
+                procurementBudget.textContent = formatCurrency(summary.budget_to_procure);
+            }
+
+            if (cancelRate) {
+                cancelRate.textContent = formatPercent(summary.cancel_rate_pct);
+            }
+
+            if (urgentCount) {
+                urgentCount.textContent = String(urgent);
             }
         }
 
@@ -718,12 +780,14 @@
 
                 const data = await response.json();
 
+                const summary = data.summary || {};
+
                 if (!data.items || data.items.length === 0) {
-                    renderForecast([]);
+                    renderForecast([], summary);
                     return;
                 }
 
-                renderForecast(data.items);
+                renderForecast(data.items, summary);
             } catch (err) {
                 console.error("Ошибка получения прогноза:", err);
             }
@@ -752,24 +816,27 @@
             }
         }
 
-        function renderForecast(items) {
+        function renderForecast(items, summary = {}) {
             const tableBody = document.getElementById("tableBody");
 
             if (!items || items.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--text-muted); padding: 40px;">Нет данных для отображения.</td></tr>';
-                const summary = document.querySelector(".table-footer span");
-                if (summary) {
-                    summary.textContent = "Показано 0 из 0 рекомендаций";
+                const footerSummary = document.querySelector(".table-footer span");
+                if (footerSummary) {
+                    footerSummary.textContent = "Показано 0 из 0 рекомендаций";
                 }
+                updateStats([], summary);
                 return;
             }
 
             tableBody.innerHTML = "";
 
-            const summary = document.querySelector(".table-footer span");
-            if (summary) {
-                summary.textContent = `Показано ${items.length} из ${items.length} рекомендаций`;
+            const footerSummary = document.querySelector(".table-footer span");
+            if (footerSummary) {
+                footerSummary.textContent = `Показано ${items.length} из ${items.length} рекомендаций`;
             }
+            updateStats(items, summary);
+
 
             items.forEach((item, index) => {
                 const urgency = (item.urgency || "low").toLowerCase();
@@ -824,7 +891,9 @@
                     urgency: item.urgency || "low",
                     forecast_1m: item["ожидаемый спрос в следующем месяце"] ?? 0,
                     forecast_6m: item["ожидаемый спрос в следующем полугодии"] ?? 0,
-                    forecast_12m: item["ожидаемый спрос в следующем году"] ?? 0
+                    forecast_12m: item["ожидаемый спрос в следующем году"] ?? 0,
+                    price: item.price ?? item.unit_purchase_price ?? 0,
+                    unit_purchase_price: item.unit_purchase_price ?? item.price ?? 0
                 };
 
                 const response = await fetch("/api/drafts/items", {

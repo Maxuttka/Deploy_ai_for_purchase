@@ -57,7 +57,7 @@ def calculate_total(items: list[dict]) -> int:
     total = 0
     for item in items:
         qty = item.get("recommended_order_qty") or 0
-        price = item.get("price") or 0
+        price = item.get("price") if item.get("price") is not None else item.get("unit_purchase_price") or 0
         try:
             total += float(qty) * float(price)
         except Exception:
@@ -185,6 +185,12 @@ def get_draft(draft_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Черновик не найден")
 
     items = safe_load_items(draft.items_json)
+    normalized_items = []
+    for item in items:
+        normalized = dict(item)
+        if normalized.get("price") is None:
+            normalized["price"] = normalized.get("unit_purchase_price") or 0
+        normalized_items.append(normalized)
 
     return {
         "id": draft.id,
@@ -192,7 +198,7 @@ def get_draft(draft_id: int, db: Session = Depends(get_db)):
         "status": draft.status,
         "total_amount": draft.total_amount,
         "created_at": draft.created_at.strftime("%d.%m.%Y"),
-        "items": items,
+        "items": normalized_items,
         "parent_draft_id": draft.parent_draft_id,
     }
 

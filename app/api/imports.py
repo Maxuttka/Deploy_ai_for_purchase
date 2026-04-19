@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -29,6 +29,7 @@ class ForecastResponse(BaseModel):
     job_id: str
     status: str
     items: list[dict]
+    summary: dict = Field(default_factory=dict)
 
 class ImportListItem(BaseModel):
     job_id: str
@@ -117,15 +118,25 @@ def get_job_result(job_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail=f"Job is not completed yet. Current status: {job.status}")
 
     if not job.result_json:
-        return ForecastResponse(job_id=job.id, status=job.status, items=[])
+        return ForecastResponse(job_id=job.id, status=job.status, items=[], summary={})
 
     try:
-        items = json.loads(job.result_json)
+        stored_result = json.loads(job.result_json)
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="Stored result is corrupted")
+
+    if isinstance(stored_result, list):
+        items = stored_result
+        summary = {}
+    elif isinstance(stored_result, dict):
+        items = stored_result.get("items", [])
+        summary = stored_result.get("summary", {}) or {}
+    else:
+        raise HTTPException(status_code=500, detail="Stored result has unsupported format")
 
     return ForecastResponse(
         job_id=job.id,
         status=job.status,
-        items=items
+        items=items,
+        summary=summary,
     )

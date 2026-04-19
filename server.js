@@ -217,6 +217,65 @@ app.get("/api/drafts/:id/email-template", async (req, res) => {
   }
 });
 
+app.get("/api/suppliers", async (req, res) => {
+  try {
+    const response = await fetch(`${FASTAPI_URL}/suppliers/`);
+    const text = await response.text();
+
+    res.status(response.status);
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+  } catch (err) {
+    console.error("Ошибка получения поставщиков:", err);
+    res.status(500).json({ error: "Ошибка получения поставщиков" });
+  }
+});
+
+app.post("/api/suppliers", express.json(), async (req, res) => {
+  try {
+    const response = await fetch(`${FASTAPI_URL}/suppliers/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+
+    const text = await response.text();
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+  } catch (err) {
+    console.error("Ошибка добавления поставщика:", err);
+    res.status(500).json({ error: "Ошибка добавления поставщика" });
+  }
+});
+
+app.delete("/api/suppliers/:id", async (req, res) => {
+  try {
+    const response = await fetch(`${FASTAPI_URL}/suppliers/${req.params.id}`, {
+      method: "DELETE"
+    });
+
+    const text = await response.text();
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+  } catch (err) {
+    console.error("Ошибка удаления поставщика:", err);
+    res.status(500).json({ error: "Ошибка удаления поставщика" });
+  }
+});
+
 app.listen(port, "0.0.0.0", () => {
   console.log(`Frontend server running on port ${port}`);
 });

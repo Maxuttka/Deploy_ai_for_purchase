@@ -47,3 +47,21 @@ class Draft(Base):
         ForeignKey("drafts.id"),
         nullable=True
     )
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    brand: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(255), nullable=False)
+    city: Mapped[str] = mapped_column(String(255), nullable=False)
+    legal_entity: Mapped[str] = mapped_column(Text, nullable=False)
+    shipping_method: Mapped[str] = mapped_column(Text, default="-", nullable=False)
+    website: Mapped[str] = mapped_column(Text, default="-", nullable=False)
+    contact: Mapped[str] = mapped_column(Text, nullable=False)
+    phone: Mapped[str] = mapped_column(Text, default="-", nullable=False)
+    email: Mapped[str] = mapped_column(Text, default="-", nullable=False)
+    status: Mapped[str] = mapped_column(String(64), default="актив", nullable=False)
+    buyer: Mapped[str] = mapped_column(String(255), default="-", nullable=False)
+    work_conditions: Mapped[str] = mapped_column(Text, default="-", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

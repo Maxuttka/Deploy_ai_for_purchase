@@ -101,8 +101,9 @@ def process_import_job(job_id: str) -> None:
             return
 
         try:
+            summary = {}
             if job.kind == "orders":
-                result_df = run_forecast(df)
+                result_df, summary = run_forecast(df)
             elif job.kind == "stocks":
                 result_df = run_stocks_processing(df)
             else:
@@ -115,7 +116,8 @@ def process_import_job(job_id: str) -> None:
             return
 
         records = result_df.to_dict(orient="records")
-        job.result_json = json.dumps(records, ensure_ascii=False)
+        payload = {"items": records, "summary": summary}
+        job.result_json = json.dumps(payload, ensure_ascii=False)
         job.status = "done"
         db.add(job)
         db.commit()

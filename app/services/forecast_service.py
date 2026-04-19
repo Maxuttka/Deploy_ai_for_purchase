@@ -1,11 +1,17 @@
 import numpy as np
 import pandas as pd
+import joblib
+from pathlib import Path
 
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+MODELS_DIR = PROJECT_DIR / "models"
+FALLBACK_MODELS_DIR = PROJECT_DIR
 
 def prepare_monthly_demand(df: pd.DataFrame) -> pd.DataFrame:
     data = df.copy()
@@ -24,6 +30,7 @@ def prepare_monthly_demand(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return monthly
+
 
 def expand_full_month_grid(monthly: pd.DataFrame) -> pd.DataFrame:
     all_ids = monthly["ID товара"].unique()
@@ -45,6 +52,7 @@ def expand_full_month_grid(monthly: pd.DataFrame) -> pd.DataFrame:
     )
 
     return full_df
+
 
 def add_time_features(full_df: pd.DataFrame) -> pd.DataFrame:
     df_feat = full_df.copy()
@@ -96,6 +104,7 @@ def add_time_features(full_df: pd.DataFrame) -> pd.DataFrame:
 
     return df_feat
 
+
 def add_targets(df_feat: pd.DataFrame) -> pd.DataFrame:
     df_target = df_feat.copy()
     g = df_target.groupby("ID товара")
@@ -114,12 +123,14 @@ def add_targets(df_feat: pd.DataFrame) -> pd.DataFrame:
 
     return df_target
 
+
 def build_feature_table(df: pd.DataFrame) -> pd.DataFrame:
     monthly = prepare_monthly_demand(df)
     full_df = expand_full_month_grid(monthly)
     feat_df = add_time_features(full_df)
     feat_df = add_targets(feat_df)
     return feat_df
+
 
 def get_feature_columns() -> list[str]:
     return [
@@ -136,7 +147,7 @@ def get_feature_columns() -> list[str]:
     ]
 
 def make_model(feature_cols: list[str]) -> Pipeline:
-    categorical_features = ["ID товара"]
+    categorical_features = ["ID ??????"]
     numeric_features = [col for col in feature_cols if col not in categorical_features]
 
     preprocessor = ColumnTransformer(
@@ -145,29 +156,28 @@ def make_model(feature_cols: list[str]) -> Pipeline:
                 "cat",
                 Pipeline([
                     ("imputer", SimpleImputer(strategy="most_frequent")),
-                    ("ohe", OneHotEncoder(handle_unknown="ignore"))
+                    ("ohe", OneHotEncoder(handle_unknown="ignore")),
                 ]),
-                categorical_features
+                categorical_features,
             ),
             (
                 "num",
                 Pipeline([
                     ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
-                    ("scaler", StandardScaler())
+                    ("scaler", StandardScaler()),
                 ]),
-                numeric_features
-            )
+                numeric_features,
+            ),
         ]
     )
 
-    model = Pipeline([
+    return Pipeline([
         ("preprocessor", preprocessor),
-        ("regressor", LinearRegression())
+        ("regressor", LinearRegression()),
     ])
 
-    return model
 
-def train_models(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+def train_models(df: pd.DataFrame) -> dict:
     feat_df = build_feature_table(df)
     feature_cols = get_feature_columns()
 
@@ -181,7 +191,7 @@ def train_models(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     for horizon_name, target_col in targets.items():
         work = feat_df.dropna(subset=[target_col]).copy()
         if work.empty:
-            raise ValueError(f"Недостаточно данных для обучения модели {horizon_name}")
+            raise ValueError(f"Not enough data to train model {horizon_name}")
 
         X_train = work[feature_cols]
         y_train = work[target_col]
@@ -190,56 +200,112 @@ def train_models(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         model.fit(X_train, y_train)
         models[horizon_name] = model
 
-    return feat_df, models
+    return models
 
-def predict_current_last_month(df: pd.DataFrame) -> pd.DataFrame:
-    feat_df, models = train_models(df)
+def load_models() -> dict:
+    model_filenames = {
+        "1m": "1m_model.pkl",
+        "6m": "6m_model.pkl",
+        "12m": "12m_model.pkl",
+    }
+
+    models = {}
+    for horizon, filename in model_filenames.items():
+        preferred_path = MODELS_DIR / filename
+        fallback_path = FALLBACK_MODELS_DIR / filename
+        model_path = preferred_path if preferred_path.exists() else fallback_path
+        if not model_path.exists():
+            raise FileNotFoundError(f"Model not found: {preferred_path} or {fallback_path}")
+        models[horizon] = joblib.load(model_path)
+
+    return models
+
+def predict_future_demand(df: pd.DataFrame, models: dict) -> pd.DataFrame:
+    feat_df = build_feature_table(df)
     feature_cols = get_feature_columns()
-
     forecast_month = feat_df["month"].max()
     forecast_df = feat_df[feat_df["month"] == forecast_month].copy()
-
     if forecast_df.empty:
         raise ValueError("Не удалось подготовить данные для прогноза")
-
-    X_forecast = forecast_df[feature_cols]
-
+    X_forecast = forecast_df[feature_cols].copy()
+    X_forecast["ID товара"] = X_forecast["ID товара"].astype(str)
     pred_1m = models["1m"].predict(X_forecast)
     pred_6m = models["6m"].predict(X_forecast)
     pred_12m = models["12m"].predict(X_forecast)
-
     result = pd.DataFrame({
-        "ID товара": forecast_df["ID товара"].values,
+        "ID товара": forecast_df["ID товара"].astype(str).values,
         "ожидаемый спрос в следующем месяце": np.maximum(pred_1m, 0),
         "ожидаемый спрос в следующем полугодии": np.maximum(pred_6m, 0),
         "ожидаемый спрос в следующем году": np.maximum(pred_12m, 0),
     })
-
     return result.sort_values("ID товара").reset_index(drop=True)
 
-def run_forecast(df: pd.DataFrame) -> pd.DataFrame:
+
+def _build_product_info(df: pd.DataFrame) -> pd.DataFrame:
+    data = df.copy()
+    data["ID товара"] = data["ID товара"].astype(str)
+    data["_row_order"] = np.arange(len(data))
+    data["_sort_date"] = pd.to_datetime(data["Дата создания"], errors="coerce", dayfirst=True)
+
+    if "Цена закупки" not in data.columns:
+        data["Цена закупки"] = np.nan
+    if "Цена" not in data.columns:
+        data["Цена"] = np.nan
+
+    data["Цена закупки"] = pd.to_numeric(data["Цена закупки"], errors="coerce")
+    data["Цена"] = pd.to_numeric(data["Цена"], errors="coerce")
+
+    product_info = (
+        data[["ID товара", "Наименование", "Артикул", "Цена закупки", "Цена", "_sort_date", "_row_order"]]
+        .dropna(subset=["ID товара"])
+        .sort_values(["_sort_date", "_row_order"])
+        .drop_duplicates(subset=["ID товара"], keep="last")
+        .copy()
+    )
+
+    product_info["unit_purchase_price"] = (
+        product_info["Цена закупки"]
+        .fillna(product_info["Цена"])
+        .fillna(0)
+        .round(2)
+    )
+
+    return product_info[["ID товара", "Наименование", "Артикул", "unit_purchase_price"]]
+
+
+def _calculate_cancel_rate(df: pd.DataFrame) -> float | None:
+    if "Статус" not in df.columns:
+        return None
+
+    statuses = df["Статус"].fillna("").astype(str).str.strip()
+    valid_statuses = statuses[statuses != ""]
+    if valid_statuses.empty:
+        return None
+
+    cancelled = valid_statuses.str.lower().str.startswith("отмен")
+    return round(float(cancelled.mean() * 100), 2)
+
+
+def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | None]]:
     required_cols = ["ID товара", "Дата создания", "Кол-во"]
     missing = [col for col in required_cols if col not in df.columns]
     if missing:
         raise ValueError(f"В CSV нет обязательных колонок: {missing}")
 
-    result = predict_current_last_month(df.copy())
-
-    product_info = (
-        df[["ID товара", "Наименование", "Артикул"]]
-        .dropna(subset=["ID товара"])
-        .drop_duplicates(subset=["ID товара"], keep="last")
-        .copy()
-    )
+    try:
+        models = load_models()
+    except Exception:
+        models = train_models(df.copy())
+    result = predict_future_demand(df.copy(), models)
+    product_info = _build_product_info(df)
 
     product_info["ID товара"] = product_info["ID товара"].astype(str)
     result["ID товара"] = result["ID товара"].astype(str)
-
     merged = result.merge(product_info, on="ID товара", how="left")
-
     merged["product_id"] = merged["ID товара"]
     merged["name"] = merged["Наименование"].fillna("Товар " + merged["ID товара"])
     merged["article"] = merged["Артикул"].fillna(merged["ID товара"])
+    merged["unit_purchase_price"] = merged["unit_purchase_price"].fillna(0).round(2)
     merged["current_stock"] = 0
     merged["avg_daily_sales"] = (merged["ожидаемый спрос в следующем месяце"] / 30).round(2)
     merged["recommended_order_qty"] = np.ceil(
@@ -247,7 +313,7 @@ def run_forecast(df: pd.DataFrame) -> pd.DataFrame:
     ).astype(int)
 
     def get_urgency(x: float) -> str:
-        if x >= 20:
+        if x >= 15:
             return "high"
         if x >= 5:
             return "medium"
@@ -255,10 +321,11 @@ def run_forecast(df: pd.DataFrame) -> pd.DataFrame:
 
     merged["urgency"] = merged["ожидаемый спрос в следующем месяце"].apply(get_urgency)
 
-    return merged[[
+    forecast_items = merged[[
         "product_id",
         "name",
         "article",
+        "unit_purchase_price",
         "current_stock",
         "avg_daily_sales",
         "recommended_order_qty",
@@ -270,3 +337,13 @@ def run_forecast(df: pd.DataFrame) -> pd.DataFrame:
         by=["recommended_order_qty", "avg_daily_sales"],
         ascending=[False, False]
     ).reset_index(drop=True)
+
+    summary = {
+        "budget_to_procure": round(
+            float((forecast_items["recommended_order_qty"] * forecast_items["unit_purchase_price"]).sum()),
+            2,
+        ),
+        "cancel_rate_pct": _calculate_cancel_rate(df),
+    }
+
+    return forecast_items, summary

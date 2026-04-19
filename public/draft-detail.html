@@ -403,7 +403,6 @@
                 <span class="logo-text">Procurement Dashboard</span>
             </div>
             <nav class="nav">
-                <a href="index.html" class="nav-link">Остатки</a>
                 <a href="index.html" class="nav-link">Рекомендации</a>
                 <a href="drafts.html" class="nav-link active">Заказы</a>
                 <a href="#" class="nav-link">Поставщики</a>
@@ -461,12 +460,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 28%;">Товар</th>
-                            <th style="width: 14%;">Артикул</th>
+                                    <th style="width: 24%;">Товар</th>
+                            <th style="width: 12%;">Артикул</th>
                             <th class="num-cell" style="width: 10%;">Остаток</th>
                             <th class="num-cell" style="width: 12%;">Ср. продажи / день</th>
                             <th class="num-cell" style="width: 10%;">Рек. кол-во</th>
-                            <th style="width: 18%;">Поставщик</th>
+                            <th class="num-cell" style="width: 10%;">Цена</th>
+                            <th style="width: 16%;">Поставщик</th>
                             <th style="width: 8%;">Срочность</th>
                         </tr>
                     </thead>
@@ -564,13 +564,25 @@
             return `<select class="supplier-select" data-index="${index}">${options.join("")}</select>`;
         }
 
+        function getItemPrice(item) {
+            return item.price ?? item.unit_purchase_price ?? 0;
+        }
+
+        function calculateDraftTotal(items) {
+            return items.reduce((sum, item) => {
+                const qty = Number(item.recommended_order_qty || 0);
+                const price = Number(getItemPrice(item) || 0);
+                return sum + qty * price;
+            }, 0);
+        }
+
         function renderItems(items) {
             const tbody = document.getElementById("items-table");
 
             if (!items.length) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="empty-state">В этом черновике пока нет товаров</td>
+                        <td colspan="8" class="empty-state">В этом черновике пока нет товаров</td>
                     </tr>
                 `;
                 return;
@@ -586,6 +598,7 @@
                     <td class="num-cell">${formatNumber(item.current_stock)}</td>
                     <td class="num-cell">${formatNumber(item.avg_daily_sales, 2)}</td>
                     <td class="num-cell">${formatNumber(item.recommended_order_qty)}</td>
+                    <td class="num-cell">${formatMoney(getItemPrice(item))}</td>
                     <td>${renderSupplierSelect(item.supplier, index)}</td>
                     <td>${getUrgencyLabel(item.urgency)}</td>
                 </tr>
@@ -696,8 +709,8 @@
                 document.getElementById("draft-status").textContent = getStatusLabel(draft.status);
                 document.getElementById("draft-supplier").textContent = draft.supplier || "Не указан";
                 document.getElementById("draft-items-count").textContent = items.length;
-                document.getElementById("grand-total").textContent = formatMoney(draft.total_amount);
-
+                const computedTotal = calculateDraftTotal(items);
+                document.getElementById("grand-total").textContent = formatMoney(computedTotal);
                 renderItems(items);
             } catch (error) {
                 console.error("Ошибка загрузки черновика:", error);

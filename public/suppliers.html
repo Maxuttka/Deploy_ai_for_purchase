@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поставщики | Procurement Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f8f9fa; color: #333; line-height: 1.5; }
+        a { text-decoration: none; color: #0d6efd; }
+        a:hover { text-decoration: underline; }
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(36, 36, 235, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 400;
+            padding: 4px 0;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            color: #2563eb;
+            font-weight: 700;
+            border-bottom: 2px solid #2424eb;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 10px 14px;
+            width: 240px;
+            color: var(--text-muted);
+            font-size: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(36, 36, 235, 0.15), rgba(36, 36, 235, 0.05));
+            border: 2px solid var(--surface);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .container { max-width: 1280px; margin: 2rem auto; padding: 0 1rem; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .page-header h2 { font-size: 1.5rem; font-weight: 600; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.95rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn-primary { background: #0d6efd; color: #fff; }
+        .btn-primary:hover { background: #0b5ed7; }
+        .btn-danger { background: #dc3545; color: #fff; padding: 0.35rem 0.75rem; font-size: 0.85rem; }
+        .btn-danger:hover { background: #bb2d3b; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        .btn-secondary:hover { background: #5c636a; }
+        .table-container { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 950px; }
+        th, td { padding: 0.875rem 1rem; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #f8f9fa; font-weight: 600; color: #495057; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { font-size: 0.95rem; vertical-align: middle; }
+        tr:hover { background: #f8f9fa; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500; }
+        .badge-active { background: #d1e7dd; color: #0f5132; }
+        .badge-passive { background: #fff3cd; color: #664d03; }
+        .badge-out { background: #f8d7da; color: #842029; }
+        .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; font-size: 0.9rem; color: #6c757d; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
+        .modal { background: #fff; padding: 2rem; border-radius: 8px; width: 90%; max-width: 550px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .modal h3 { margin-bottom: 1.25rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        .form-group input, .form-group select { width: 100%; padding: 0.6rem; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.95rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">📦</div>
+                <span class="logo-text">Procurement Dashboard</span>
+            </div>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Рекомендации</a>
+                <a href="drafts.html" class="nav-link">Заказы</a>
+                <a href="#" class="nav-link active">Поставщики</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <input type="text" class="search-box" placeholder="Глобальный поиск..." />
+            <div class="user-avatar"></div>
+        </div>
+    </header>
+    <main class="container">
+        <div class="page-header">
+            <h2>Реестр поставщиков</h2>
+            <button class="btn btn-primary" onclick="openModal()">+ Добавить поставщика</button>
+        </div>
+        <div class="table-container">
+            <table id="suppliersTable">
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Бренд</th>
+                        <th>Категория</th>
+                        <th>Город</th>
+                        <th>Юр. лицо</th>
+                        <th>Контакт / Телефон</th>
+                        <th>Сайт</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <span>Показано <span id="shownCount">0</span> из <span id="totalCount">0</span> поставщиков</span>
+        </div>
+    </main>
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <h3>Новый поставщик</h3>
+            <form id="addSupplierForm">
+                <div class="form-group">
+                    <label>Бренд / Название</label>
+                    <input type="text" name="brand" required placeholder="Например: Амперка">
+                </div>
+                <div class="form-group">
+                    <label>Категория товара</label>
+                    <input type="text" name="category" required placeholder="микрокомпьютеры, 3D-печать...">
+                </div>
+                <div class="form-group">
+                    <label>Город</label>
+                    <input type="text" name="city" required placeholder="РФ Москва">
+                </div>
+                <div class="form-group">
+                    <label>Юр. лицо</label>
+                    <input type="text" name="legalEntity" required placeholder="ООО / ИП ...">
+                </div>
+                <div class="form-group">
+                    <label>ФИО менеджера</label>
+                    <input type="text" name="contact" required>
+                </div>
+                <div class="form-group">
+                    <label>Сайт</label>
+                    <input type="url" name="website" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Статус работы</label>
+                    <select name="status">
+                        <option value="актив">Актив (закупается регулярно)</option>
+                        <option value="пассив">Пассив (есть остатки, не закупается)</option>
+                        <option value="новинка">Новинка (без истории продаж)</option>
+                        <option value="вывод">Вывод (не закупается, нет остатков)</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let suppliers = [];
+    
+        const tableBody = document.getElementById('tableBody');
+        const shownCountEl = document.getElementById('shownCount');
+        const totalCountEl = document.getElementById('totalCount');
+        const modal = document.getElementById('addModal');
+        const form = document.getElementById('addSupplierForm');
+    
+        function getStatusBadge(status) {
+            const value = (status || "").toLowerCase();
+    
+            if (value.includes('актив')) {
+                return '<span class="badge badge-active">Актив</span>';
+            }
+            if (value.includes('пассив') || value.includes('новинка')) {
+                return '<span class="badge badge-passive">Пассив / Новинка</span>';
+            }
+            return '<span class="badge badge-out">Вывод</span>';
+        }
+    
+        function normalizeWebsite(url) {
+            if (!url || url === "-") return "-";
+            return url.startsWith("http") ? url : "https://" + url;
+        }
+    
+        function renderTable() {
+            tableBody.innerHTML = '';
+    
+            suppliers.forEach((s, index) => {
+                const websiteHref = normalizeWebsite(s.website);
+                const websiteText = s.website && s.website !== "-"
+                    ? s.website.replace(/^https?:\/\//, '')
+                    : "-";
+    
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><strong>${s.brand}</strong></td>
+                    <td>${s.category}</td>
+                    <td>${s.city}</td>
+                    <td>${s.legal_entity}</td>
+                    <td>
+                        ${s.contact}
+    
+                        <small style="color:#6c757d">${s.phone || '-'}</small>
+                    </td>
+                    <td>
+                        ${websiteText === "-" ? "-" : `<a href="${websiteHref}" target="_blank">${websiteText}</a>`}
+                    </td>
+                    <td>${getStatusBadge(s.status)}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteSupplier(${s.id})">Удалить</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+    
+            shownCountEl.textContent = suppliers.length;
+            totalCountEl.textContent = suppliers.length;
+        }
+    
+        async function loadSuppliers() {
+            try {
+                const response = await fetch('/api/suppliers');
+                const data = await response.json();
+    
+                if (!response.ok) {
+                    throw new Error(data.detail || data.error || 'Не удалось загрузить поставщиков');
+                }
+    
+                suppliers = Array.isArray(data) ? data : [];
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align:center; color:#dc3545; padding: 20px;">
+                            Не удалось загрузить поставщиков
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    
+        function openModal() {
+            modal.style.display = 'flex';
+        }
+    
+        function closeModal() {
+            modal.style.display = 'none';
+            form.reset();
+        }
+    
+        async function deleteSupplier(id) {
+            if (!confirm('Вы уверены, что хотите удалить этого поставщика из реестра?')) {
+                return;
+            }
+    
+            try {
+                const response = await fetch(`/api/suppliers/${id}`, {
+                    method: 'DELETE'
+                });
+    
+                const data = await response.json();
+    
+                if (!response.ok) {
+                    alert(data.detail || data.error || 'Не удалось удалить поставщика');
+                    return;
+                }
+    
+                await loadSuppliers();
+            } catch (err) {
+                console.error(err);
+                alert('Ошибка удаления поставщика');
+            }
+        }
+    
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+    
+            const fd = new FormData(form);
+            const payload = {
+                brand: fd.get('brand'),
+                category: fd.get('category'),
+                city: fd.get('city'),
+                legal_entity: fd.get('legalEntity'),
+                shipping_method: '-',
+                website: fd.get('website') || '-',
+                contact: fd.get('contact'),
+                phone: '-',
+                email: '-',
+                status: fd.get('status'),
+                buyer: '-',
+                work_conditions: '-'
+            };
+    
+            try {
+                const response = await fetch('/api/suppliers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+    
+                const data = await response.json();
+    
+                if (!response.ok) {
+                    alert(data.detail || data.error || 'Не удалось добавить поставщика');
+                    return;
+                }
+    
+                closeModal();
+                await loadSuppliers();
+            } catch (err) {
+                console.error(err);
+                alert('Ошибка добавления поставщика');
+            }
+        });
+    
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    
+        loadSuppliers();
+    </script>
+</body>
+</html>

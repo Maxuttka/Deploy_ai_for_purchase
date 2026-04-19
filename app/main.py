@@ -7,6 +7,7 @@ from app.db.session import engine, Base
 from app.api.imports import router as imports_router
 from app.api.drafts import router as drafts_router
 from app.core.config import settings
+from app.api.suppliers import router as suppliers_router
 
 app = FastAPI(title="AI for purchasing and inventory management")
 
@@ -33,3 +34,4 @@ def health():
 
 app.include_router(imports_router)
 app.include_router(drafts_router)
+app.include_router(suppliers_router)
