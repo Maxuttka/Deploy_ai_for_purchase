@@ -170,8 +170,6 @@
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-
-
             align-items: center;
         }
 
@@ -243,10 +241,11 @@
             border-radius: 12px;
             overflow-x: auto;
             overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
         }
 
         .table-container table {
-            min-width: 1180px;
+            min-width: 1380px;
         }
 
         table {
@@ -268,11 +267,13 @@
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.03em;
+            white-space: nowrap;
         }
 
         td {
             padding: 14px 16px;
             border-bottom: 1px solid var(--border);
+            white-space: nowrap;
         }
 
         tr:hover {
@@ -283,6 +284,8 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 220px;
+            white-space: normal;
         }
 
         .product-name {
@@ -359,8 +362,6 @@
         .pagination button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-
-
         }
 
         .info-icon {
@@ -461,15 +462,12 @@
             </div>
         </div>
 
-
         <div class="upload-card">
-            <label>📤 Загрузка CSV:</label>
-            <input type="file" id="fileInput" accept=".csv" />
+            <label>📤 Загрузка файла:</label>
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" />
             <select id="kindSelect">
                 <option value="orders">Заказы</option>
-                
                 <option value="stocks">Остатки</option>
-                
             </select>
             <button onclick="uploadFile()">Загрузить</button>
             <span id="status" class="upload-status"></span>
@@ -500,7 +498,7 @@
             </select>
             <select id="urgencyFilter">
                 <option value="">Все статусы</option>
-                <option>Высокая</o ption>
+                <option>Высокая</option>
                 <option>Средняя</option>
                 <option>Низкая</option>
             </select>
@@ -513,6 +511,7 @@
                     <tr>
                         <th>Название товара</th>
                         <th>Артикул</th>
+                        <th>Цена закупки</th>
                         <th>Склад</th>
                         <th>Ср. продажи в день</th>
                         <th>Прогноз 1 мес.</th>
@@ -525,14 +524,14 @@
                 </thead>
                 <tbody id="tableBody">
                     <tr>
-                        <td colspan="10" style="text-align:center; color: var(--text-muted); padding: 18px 0;">
-                            Здесь будут отображаться результаты прогноза после загрузки CSV и обработки.
+                        <td colspan="11" style="text-align:center; color: var(--text-muted); padding: 18px 0;">
+                            Здесь будут отображаться результаты прогноза после загрузки файла и обработки.
                         </td>
                     </tr>
                 </tbody>
             </table>
             <div class="table-footer">
-                <span>Показано 0 из 0 рекомендаций</span>
+                <span id="tableFooterSummary">Показано 0 из 0 рекомендаций</span>
                 <div class="pagination">
                     <button disabled>← Назад</button>
                     <button disabled>Вперёд →</button>
@@ -587,11 +586,24 @@
             }).format(amount)}%`;
         }
 
+        function formatNumber(value, digits = 0) {
+            const amount = Number(value);
+            if (!Number.isFinite(amount)) {
+                return digits > 0 ? (0).toFixed(digits) : "0";
+            }
+
+            return new Intl.NumberFormat("ru-RU", {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits,
+            }).format(amount);
+        }
+
         function updateStats(items, summary = {}) {
             const recommendedCount = document.getElementById("recommendedCount");
             const procurementBudget = document.getElementById("procurementBudget");
             const cancelRate = document.getElementById("cancelRate");
             const urgentCount = document.getElementById("urgentCount");
+
             const safeItems = Array.isArray(items) ? items : [];
             const recommended = safeItems.filter(item => Number(item.recommended_order_qty ?? 0) > 0).length;
             const urgent = safeItems.filter(item => (item.urgency || "").toLowerCase() === "high").length;
@@ -720,7 +732,20 @@
                     body: formData
                 });
 
-                const data = await response.json();
+                const text = await response.text();
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = { error: text || "Неизвестная ошибка" };
+                }
+
+                if (!response.ok) {
+                    status.innerText = "❌ Ошибка: " + (data.detail || data.error || "Ошибка сервера");
+                    status.style.color = "var(--danger)";
+                    return;
+                }
 
                 if (data.job_id) {
                     status.innerText = `✅ Отправлено. Job ID: ${data.job_id}`;
@@ -779,7 +804,6 @@
                 }
 
                 const data = await response.json();
-
                 const summary = data.summary || {};
 
                 if (!data.items || data.items.length === 0) {
@@ -818,10 +842,10 @@
 
         function renderForecast(items, summary = {}) {
             const tableBody = document.getElementById("tableBody");
+            const footerSummary = document.getElementById("tableFooterSummary");
 
             if (!items || items.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--text-muted); padding: 40px;">Нет данных для отображения.</td></tr>';
-                const footerSummary = document.querySelector(".table-footer span");
+                tableBody.innerHTML = '<tr><td colspan="11" style="text-align:center; color: var(--text-muted); padding: 40px;">Нет данных для отображения.</td></tr>';
                 if (footerSummary) {
                     footerSummary.textContent = "Показано 0 из 0 рекомендаций";
                 }
@@ -831,12 +855,11 @@
 
             tableBody.innerHTML = "";
 
-            const footerSummary = document.querySelector(".table-footer span");
             if (footerSummary) {
                 footerSummary.textContent = `Показано ${items.length} из ${items.length} рекомендаций`;
             }
-            updateStats(items, summary);
 
+            updateStats(items, summary);
 
             items.forEach((item, index) => {
                 const urgency = (item.urgency || "low").toLowerCase();
@@ -844,20 +867,21 @@
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-            <td class="product-cell">
-                <span class="product-name">${item.name || "-"}</span>
-                <span class="product-cat">${item.product_id || "-"}</span>
-            </td>
-            <td>${item.article || "-"}</td>
-            <td>${item.current_stock ?? 0}</td>
-            <td>${item.avg_daily_sales ?? 0}/день</td>
-            <td>${Math.round(item["ожидаемый спрос в следующем месяце"] ?? 0)}</td>
-            <td>${Math.round(item["ожидаемый спрос в следующем полугодии"] ?? 0)}</td>
-            <td>${Math.round(item["ожидаемый спрос в следующем году"] ?? 0)}</td>
-            <td>${item.recommended_order_qty ?? 0} шт.</td>
-            <td><span class="urgency-badge urgency-${urgency}">${urgencyLabel}</span></td>
-            <td><button class="action-btn" id="draft-btn-${index}">В черновик</button></td>
-        `;
+                    <td class="product-cell">
+                        <span class="product-name">${item.name || "-"}</span>
+                        <span class="product-cat">${item.product_id || "-"}</span>
+                    </td>
+                    <td>${item.article || "-"}</td>
+                    <td>${formatCurrency(item.unit_purchase_price ?? item.price ?? 0)}</td>
+                    <td>${formatNumber(item.current_stock ?? 0)}</td>
+                    <td>${formatNumber(item.avg_daily_sales ?? 0, 2)}/день</td>
+                    <td>${Math.round(item["ожидаемый спрос в следующем месяце"] ?? 0)}</td>
+                    <td>${Math.round(item["ожидаемый спрос в следующем полугодии"] ?? 0)}</td>
+                    <td>${Math.round(item["ожидаемый спрос в следующем году"] ?? 0)}</td>
+                    <td>${formatNumber(item.recommended_order_qty ?? 0)} шт.</td>
+                    <td><span class="urgency-badge urgency-${urgency}">${urgencyLabel}</span></td>
+                    <td><button class="action-btn" id="draft-btn-${index}">В черновик</button></td>
+                `;
                 tableBody.appendChild(row);
 
                 const btn = document.getElementById(`draft-btn-${index}`);
@@ -918,10 +942,6 @@
                 alert("❌ Ошибка добавления в черновик");
             }
         }
-
-
-
-
 
         document.getElementById("savedJobsSelect").addEventListener("change", updateSavedJobMeta);
 

@@ -9,9 +9,11 @@ from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 MODELS_DIR = PROJECT_DIR / "models"
 FALLBACK_MODELS_DIR = PROJECT_DIR
+
 
 def prepare_monthly_demand(df: pd.DataFrame) -> pd.DataFrame:
     data = df.copy()
@@ -20,6 +22,7 @@ def prepare_monthly_demand(df: pd.DataFrame) -> pd.DataFrame:
     data["Кол-во"] = pd.to_numeric(data["Кол-во"], errors="coerce")
 
     data = data.dropna(subset=["ID товара", "Дата создания", "Кол-во"])
+    data["ID товара"] = data["ID товара"].astype(str)
 
     data["month"] = data["Дата создания"].dt.to_period("M").dt.to_timestamp()
 
@@ -146,8 +149,9 @@ def get_feature_columns() -> list[str]:
         "series_age",
     ]
 
+
 def make_model(feature_cols: list[str]) -> Pipeline:
-    categorical_features = ["ID ??????"]
+    categorical_features = ["ID товара"]
     numeric_features = [col for col in feature_cols if col not in categorical_features]
 
     preprocessor = ColumnTransformer(
@@ -202,6 +206,7 @@ def train_models(df: pd.DataFrame) -> dict:
 
     return models
 
+
 def load_models() -> dict:
     model_filenames = {
         "1m": "1m_model.pkl",
@@ -220,24 +225,30 @@ def load_models() -> dict:
 
     return models
 
+
 def predict_future_demand(df: pd.DataFrame, models: dict) -> pd.DataFrame:
     feat_df = build_feature_table(df)
     feature_cols = get_feature_columns()
     forecast_month = feat_df["month"].max()
     forecast_df = feat_df[feat_df["month"] == forecast_month].copy()
+
     if forecast_df.empty:
         raise ValueError("Не удалось подготовить данные для прогноза")
+
     X_forecast = forecast_df[feature_cols].copy()
     X_forecast["ID товара"] = X_forecast["ID товара"].astype(str)
+
     pred_1m = models["1m"].predict(X_forecast)
     pred_6m = models["6m"].predict(X_forecast)
     pred_12m = models["12m"].predict(X_forecast)
+
     result = pd.DataFrame({
         "ID товара": forecast_df["ID товара"].astype(str).values,
         "ожидаемый спрос в следующем месяце": np.maximum(pred_1m, 0),
         "ожидаемый спрос в следующем полугодии": np.maximum(pred_6m, 0),
         "ожидаемый спрос в следующем году": np.maximum(pred_12m, 0),
     })
+
     return result.sort_values("ID товара").reset_index(drop=True)
 
 
@@ -251,6 +262,10 @@ def _build_product_info(df: pd.DataFrame) -> pd.DataFrame:
         data["Цена закупки"] = np.nan
     if "Цена" not in data.columns:
         data["Цена"] = np.nan
+    if "Артикул" not in data.columns:
+        data["Артикул"] = data["ID товара"]
+    if "Наименование" not in data.columns:
+        data["Наименование"] = "Товар " + data["ID товара"]
 
     data["Цена закупки"] = pd.to_numeric(data["Цена закупки"], errors="coerce")
     data["Цена"] = pd.to_numeric(data["Цена"], errors="coerce")
@@ -262,6 +277,8 @@ def _build_product_info(df: pd.DataFrame) -> pd.DataFrame:
         .drop_duplicates(subset=["ID товара"], keep="last")
         .copy()
     )
+
+    product_info["Артикул"] = product_info["Артикул"].astype(str).str.strip()
 
     product_info["unit_purchase_price"] = (
         product_info["Цена закупки"]
@@ -286,7 +303,29 @@ def _calculate_cancel_rate(df: pd.DataFrame) -> float | None:
     return round(float(cancelled.mean() * 100), 2)
 
 
-def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | None]]:
+def build_summary(forecast_items: pd.DataFrame, cancel_rate_pct: float | None = None) -> dict[str, float | int | None]:
+    total_items = int(len(forecast_items))
+    items_to_order_count = int((forecast_items["recommended_order_qty"] > 0).sum())
+    urgent_items_count = int((forecast_items["urgency"] == "high").sum())
+
+    budget_to_procure = round(
+        float((forecast_items["recommended_order_qty"] * forecast_items["unit_purchase_price"]).sum()),
+        2,
+    )
+
+    total_current_stock = round(float(forecast_items["current_stock"].fillna(0).sum()), 2)
+
+    return {
+        "items_total_count": total_items,
+        "items_to_order_count": items_to_order_count,
+        "urgent_items_count": urgent_items_count,
+        "budget_to_procure": budget_to_procure,
+        "total_current_stock": total_current_stock,
+        "cancel_rate_pct": cancel_rate_pct,
+    }
+
+
+def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | int | None]]:
     required_cols = ["ID товара", "Дата создания", "Кол-во"]
     missing = [col for col in required_cols if col not in df.columns]
     if missing:
@@ -296,15 +335,18 @@ def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | None
         models = load_models()
     except Exception:
         models = train_models(df.copy())
+
     result = predict_future_demand(df.copy(), models)
     product_info = _build_product_info(df)
 
     product_info["ID товара"] = product_info["ID товара"].astype(str)
     result["ID товара"] = result["ID товара"].astype(str)
+
     merged = result.merge(product_info, on="ID товара", how="left")
+
     merged["product_id"] = merged["ID товара"]
     merged["name"] = merged["Наименование"].fillna("Товар " + merged["ID товара"])
-    merged["article"] = merged["Артикул"].fillna(merged["ID товара"])
+    merged["article"] = merged["Артикул"].fillna(merged["ID товара"]).astype(str).str.strip()
     merged["unit_purchase_price"] = merged["unit_purchase_price"].fillna(0).round(2)
     merged["current_stock"] = 0
     merged["avg_daily_sales"] = (merged["ожидаемый спрос в следующем месяце"] / 30).round(2)
@@ -333,17 +375,13 @@ def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | None
         "ожидаемый спрос в следующем месяце",
         "ожидаемый спрос в следующем полугодии",
         "ожидаемый спрос в следующем году",
-    ]].sort_values(
-        by=["recommended_order_qty", "avg_daily_sales"],
+    ]].sort_values(by=["recommended_order_qty", "avg_daily_sales"],
         ascending=[False, False]
     ).reset_index(drop=True)
 
-    summary = {
-        "budget_to_procure": round(
-            float((forecast_items["recommended_order_qty"] * forecast_items["unit_purchase_price"]).sum()),
-            2,
-        ),
-        "cancel_rate_pct": _calculate_cancel_rate(df),
-    }
+    summary = build_summary(
+        forecast_items=forecast_items,
+        cancel_rate_pct=_calculate_cancel_rate(df),
+    )
 
     return forecast_items, summary
