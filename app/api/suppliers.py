@@ -31,7 +31,8 @@ class SupplierOut(BaseModel):
     legal_entity: str
     shipping_method: str
     website: str
-    contact: str
+    manager_name: str
+    contact_info: str
     phone: str
     email: str
     status: str
@@ -41,12 +42,68 @@ class SupplierOut(BaseModel):
     class Config:
         from_attributes = True
 
+def clean_supplier_text(value: str | None) -> str:
+    value = (value or "").strip()
+
+    bad_values = {
+        "",
+        "-",
+        "nan",
+        "none",
+        "#error!",
+        "#n/a",
+        "#value!",
+        "#ref!",
+        "#div/0!",
+        "#name?",
+        "#null!",
+    }
+
+    if value.lower() in bad_values:
+        return "-"
+
+    return value
+
+def build_contact_info(phone: str | None, email: str | None) -> str:
+    parts = []
+
+
+    phone = clean_supplier_text(phone)
+    email = clean_supplier_text(email)
+    if phone != "-":
+        parts.append(phone)
+    if email != "-":
+        parts.append(email)
+
+    return ", ".join(parts) if parts else "-"
+
 
 @router.get("/", response_model=list[SupplierOut])
 def list_suppliers(db: Session = Depends(get_db)):
     suppliers = db.query(Supplier).order_by(Supplier.id.asc()).all()
-    return suppliers
 
+    result = []
+    for s in suppliers:
+        result.append(
+            SupplierOut(
+                id=s.id,
+                brand=s.brand,
+                category=s.category,
+                city=s.city,
+                legal_entity=s.legal_entity,
+                shipping_method=s.shipping_method,
+                website=s.website,
+                manager_name=s.contact,
+                contact_info=build_contact_info(s.phone, s.email),
+                phone=s.phone,
+                email=s.email,
+                status=s.status,
+                buyer=s.buyer,
+                work_conditions=s.work_conditions,
+            )
+        )
+
+    return result
 
 @router.post("/", response_model=SupplierOut)
 def create_supplier(data: SupplierCreate, db: Session = Depends(get_db)):

@@ -276,6 +276,35 @@ app.delete("/api/suppliers/:id", async (req, res) => {
   }
 });
 
+app.get("/api/result/:jobId/export.xlsx", async (req, res) => {
+  try {
+    const response = await fetch(`${FASTAPI_URL}/imports/${req.params.jobId}/export.xlsx`);
+
+    if (!response.ok) {
+      const text = await response.text();
+      res.status(response.status).send(text);
+      return;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      response.headers.get("content-disposition") || 'attachment; filename="recommendations.xlsx"'
+    );
+
+    res.send(buffer);
+  } catch (err) {
+    console.error("Ошибка выгрузки Excel:", err);
+    res.status(500).json({ error: "Ошибка выгрузки Excel" });
+  }
+});
+
 app.listen(port, "0.0.0.0", () => {
   console.log(`Frontend server running on port ${port}`);
 });

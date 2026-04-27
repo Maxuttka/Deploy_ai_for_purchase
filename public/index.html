@@ -180,6 +180,18 @@
             margin-bottom: 24px;
         }
 
+        .right-align {
+            margin-left: auto;
+        }
+
+        .filters button.right-align {
+            background-color: var(--text);
+        }
+
+        .filters button.right-align:hover {
+            background-color: #334155;
+        }
+
         .saved-row select,
         .saved-row button,
         .filters select,
@@ -287,6 +299,13 @@
             min-width: 220px;
             white-space: normal;
         }
+        .product-cell {
+    position: relative;
+    cursor: help;
+}
+
+
+
 
         .product-name {
             font-weight: 500;
@@ -491,11 +510,13 @@
                 <option>Аксессуары</option>
                 <option>Мониторы</option>
             </select>
+
             <select id="supplierFilter">
                 <option value="">Все поставщики</option>
                 <option>TechSupply Co</option>
                 <option>GlobalParts Ltd</option>
             </select>
+
             <select id="urgencyFilter">
                 <option value="">Все статусы</option>
                 <option>Высокая</option>
@@ -503,6 +524,7 @@
                 <option>Низкая</option>
             </select>
             <button class="primary" onclick="applyFilters()">Применить</button>
+            <button class="primary right-align" onclick="downloadCurrentExcel()">Скачать как .xlsx</button>
         </div>
 
         <div class="table-container">
@@ -542,6 +564,18 @@
 
     <script>
         let savedJobs = [];
+
+        function downloadCurrentExcel() {
+            const select = document.getElementById("savedJobsSelect");
+            const jobId = select.value;
+
+            if (!jobId) {
+                alert("Сначала выберите сохранённую загрузку");
+                return;
+            }
+
+            window.open(`/api/result/${jobId}/export.xlsx`, "_blank");
+        }
 
         function formatJobLabel(job) {
             const date = new Date(job.created_at).toLocaleString("ru-RU");
@@ -585,7 +619,6 @@
                 maximumFractionDigits: 2,
             }).format(amount)}%`;
         }
-
         function formatNumber(value, digits = 0) {
             const amount = Number(value);
             if (!Number.isFinite(amount)) {
@@ -603,7 +636,6 @@
             const procurementBudget = document.getElementById("procurementBudget");
             const cancelRate = document.getElementById("cancelRate");
             const urgentCount = document.getElementById("urgentCount");
-
             const safeItems = Array.isArray(items) ? items : [];
             const recommended = safeItems.filter(item => Number(item.recommended_order_qty ?? 0) > 0).length;
             const urgent = safeItems.filter(item => (item.urgency || "").toLowerCase() === "high").length;
@@ -804,6 +836,7 @@
                 }
 
                 const data = await response.json();
+
                 const summary = data.summary || {};
 
                 if (!data.items || data.items.length === 0) {
@@ -858,6 +891,8 @@
             if (footerSummary) {
                 footerSummary.textContent = `Показано ${items.length} из ${items.length} рекомендаций`;
             }
+            updateStats(items, summary);
+
 
             updateStats(items, summary);
 
@@ -867,10 +902,10 @@
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td class="product-cell">
-                        <span class="product-name">${item.name || "-"}</span>
-                        <span class="product-cat">${item.product_id || "-"}</span>
-                    </td>
+                    <td class="product-cell" data-tooltip="Рекомендация основана на анализе продаж за последние 3 месяца и текущих остатках на складе">
+    <span class="product-name">${item.name || "-"}</span>
+    <span class="product-cat">${item.product_id || "-"}</span>
+</td>
                     <td>${item.article || "-"}</td>
                     <td>${formatCurrency(item.unit_purchase_price ?? item.price ?? 0)}</td>
                     <td>${formatNumber(item.current_stock ?? 0)}</td>
@@ -887,6 +922,7 @@
                 const btn = document.getElementById(`draft-btn-${index}`);
                 btn.addEventListener("click", () => addToDraftByItem(item));
             });
+            initTooltips()
         }
 
         function applyFilters() {
@@ -978,6 +1014,53 @@
                 }
             });
         });
+
+function initTooltips() {
+    document.querySelectorAll('.product-cell').forEach(cell => {
+        cell.addEventListener('mouseenter', (e) => {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'dynamic-tooltip';
+            tooltip.textContent = 'Рекомендация основана на анализе продаж и текущих остатках';
+            tooltip.style.cssText = `
+                position: fixed;
+                background: #1e293b;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 0.85rem;
+                max-width: 280px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                pointer-events: none;
+            `;
+            document.body.appendChild(tooltip);
+            
+            const rect = e.target.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+            
+            let top = rect.top - tooltipRect.height - 8;
+            let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+            
+            if (left < 8) left = 8;
+            if (left + tooltipRect.width > window.innerWidth - 8) {
+                left = window.innerWidth - tooltipRect.width - 8;
+            }
+            if (top < 8) top = rect.bottom + 8;
+            
+            tooltip.style.top = top + 'px';
+            tooltip.style.left = left + 'px';
+            
+            e.target._tooltip = tooltip;
+        });
+        
+        cell.addEventListener('mouseleave', (e) => {
+            if (e.target._tooltip) {
+                e.target._tooltip.remove();
+                e.target._tooltip = null;
+            }
+        });
+    });
+}
 
         loadSavedJobs(true);
     </script>

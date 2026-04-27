@@ -12,6 +12,10 @@ from app.db.models import ImportJob, ImportError
 from app.db.session import get_db
 from app.services.import_service import create_job, process_import_job, VALID_KINDS
 
+from io import BytesIO
+import pandas as pd
+from fastapi.responses import StreamingResponse
+
 router = APIRouter(prefix="/imports")
 
 
@@ -148,4 +152,96 @@ def get_job_result(job_id: str, db: Session = Depends(get_db)):
         status=job.status,
         items=items,
         summary=summary,
+    )
+
+@router.get("/{job_id}/export.xlsx")
+def export_job_result_xlsx(job_id: str, db: Session = Depends(get_db)):
+    job: ImportJob | None = db.get(ImportJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != "done":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job is not completed yet. Current status: {job.status}"
+        )
+
+    if not job.result_json:
+        raise HTTPException(status_code=404, detail="No result to export")
+
+    try:
+        stored_result = json.loads(job.result_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Stored result is corrupted")
+
+    if isinstance(stored_result, list):
+        items = stored_result
+    elif isinstance(stored_result, dict):
+        items = stored_result.get("items", [])
+    else:
+        raise HTTPException(status_code=500, detail="Stored result has unsupported format")
+
+    if not items:
+        raise HTTPException(status_code=404, detail="No rows to export")
+
+    df = pd.DataFrame(items).copy()
+
+    export_columns = [
+        "product_id",
+        "name",
+        "article",
+        "unit_purchase_price",
+        "current_stock",
+        "avg_daily_sales",
+        "recommended_order_qty",
+        "urgency",
+        "ожидаемый спрос в следующем месяце",
+        "ожидаемый спрос в следующем полугодии",
+        "ожидаемый спрос в следующем году",
+    ]
+
+    existing_columns = [col for col in export_columns if col in df.columns]
+    if not existing_columns:
+        raise HTTPException(status_code=500, detail="Result has no exportable columns")
+
+    df = df[existing_columns].copy()
+
+    rename_map = {
+        "product_id": "ID товара",
+        "name": "Наименование",
+        "article": "Артикул",
+        "unit_purchase_price": "Цена закупки",
+        "current_stock": "Текущий остаток",
+        "avg_daily_sales": "Средние продажи в день",
+        "recommended_order_qty": "Рекомендуемое количество",
+        "urgency": "Срочность",
+        "ожидаемый спрос в следующем месяце": "Прогноз на 1 месяц",
+        "ожидаемый спрос в следующем полугодии": "Прогноз на 6 месяцев",
+        "ожидаемый спрос в следующем году": "Прогноз на 12 месяцев",
+    }
+    df = df.rename(columns=rename_map)
+
+    urgency_map = {
+        "high": "Высокая",
+        "medium": "Средняя",
+        "low": "Низкая",
+    }
+    if "Срочность" in df.columns:
+        df["Срочность"] = df["Срочность"].map(
+            lambda x: urgency_map.get(str(x).strip().lower(), x)
+        )
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Рекомендации")
+
+    output.seek(0)
+    filename = f"recommendations_{job_id}.xlsx"
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        },
     )

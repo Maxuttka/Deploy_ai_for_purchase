@@ -161,7 +161,8 @@
                         <th>Категория</th>
                         <th>Город</th>
                         <th>Юр. лицо</th>
-                        <th>Контакт / Телефон</th>
+                        <th>Менеджер</th>
+                        <th>Контакты</th>
                         <th>Сайт</th>
                         <th>Статус</th>
                         <th>Действия</th>
@@ -249,13 +250,13 @@
     
         function renderTable() {
             tableBody.innerHTML = '';
-    
+
             suppliers.forEach((s, index) => {
                 const websiteHref = normalizeWebsite(s.website);
                 const websiteText = s.website && s.website !== "-"
                     ? s.website.replace(/^https?:\/\//, '')
                     : "-";
-    
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${index + 1}</td>
@@ -263,11 +264,8 @@
                     <td>${s.category}</td>
                     <td>${s.city}</td>
                     <td>${s.legal_entity}</td>
-                    <td>
-                        ${s.contact}
-    
-                        <small style="color:#6c757d">${s.phone || '-'}</small>
-                    </td>
+                    <td>${s.manager_name || "-"}</td>
+                    <td>${s.contact_info || "-"}</td>
                     <td>
                         ${websiteText === "-" ? "-" : `<a href="${websiteHref}" target="_blank">${websiteText}</a>`}
                     </td>
@@ -278,10 +276,10 @@
                 `;
                 tableBody.appendChild(row);
             });
-    
+
             shownCountEl.textContent = suppliers.length;
             totalCountEl.textContent = suppliers.length;
-        }
+}
     
         async function loadSuppliers() {
             try {
