@@ -8,6 +8,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from app.services.recommendation_service import get_recommendation_text
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
@@ -353,6 +354,10 @@ def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | int 
     merged["recommended_order_qty"] = np.ceil(
         merged["ожидаемый спрос в следующем месяце"]
     ).astype(int)
+    merged["recommendation_text"] = merged.apply(
+        lambda row: get_recommendation_text(row.to_dict()),
+        axis=1
+    )
 
     def get_urgency(x: float) -> str:
         if x >= 15:
@@ -372,6 +377,7 @@ def run_forecast(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, float | int 
         "avg_daily_sales",
         "recommended_order_qty",
         "urgency",
+        "recommendation_text",
         "ожидаемый спрос в следующем месяце",
         "ожидаемый спрос в следующем полугодии",
         "ожидаемый спрос в следующем году",

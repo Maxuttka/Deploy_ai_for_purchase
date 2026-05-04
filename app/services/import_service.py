@@ -9,6 +9,7 @@ from app.db.models import ImportJob, ImportError
 from app.db.session import session_local
 from app.services.forecast_service import run_forecast, build_summary
 from app.services.stocks_service import run_stocks_processing, add_residue
+from app.services.recommendation_service import get_recommendation_text
 
 VALID_KINDS = {"stocks", "orders", "collections", "prices"}
 
@@ -172,6 +173,10 @@ def process_import_job(job_id: str) -> None:
                     return
                 recomend_df = pd.DataFrame(order_items)
                 merged_df = add_residue(recomend_df, stocks_df)
+                merged_df["recommendation_text"] = merged_df.apply(
+                    lambda row: get_recommendation_text(row.to_dict()),
+                    axis=1
+                )
                 summary = build_summary(
                     forecast_items=merged_df,
                     cancel_rate_pct=stored_result.get("summary", {}).get("cancel_rate_pct"),

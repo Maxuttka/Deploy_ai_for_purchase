@@ -447,8 +447,9 @@
             </div>
             <nav class="nav">
                 <a href="index.html" class="nav-link active">Рекомендации</a>
-                <a href="/drafts.html" class="nav-link">Заказы</a>
+                <a href="drafts.html" class="nav-link">Заказы</a>
                 <a href="suppliers.html" class="nav-link">Поставщики</a>
+                <a href="suppliers-search.html" class="nav-link">Поиск поставщиков</a>
             </nav>
         </div>
         <div class="header-right">
@@ -564,6 +565,15 @@
 
     <script>
         let savedJobs = [];
+
+        function escapeHtmlAttr(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;");
+        }
 
         function downloadCurrentExcel() {
             const select = document.getElementById("savedJobsSelect");
@@ -902,9 +912,9 @@
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td class="product-cell" data-tooltip="Рекомендация основана на анализе продаж за последние 3 месяца и текущих остатках на складе">
-    <span class="product-name">${item.name || "-"}</span>
-    <span class="product-cat">${item.product_id || "-"}</span>
+                    <td class="product-cell" data-tooltip="${escapeHtmlAttr(item.recommendation_text || 'Рекомендация пока не сформирована')}">
+    <span class="product-name">${escapeHtmlAttr(item.name || "-")}</span>
+    <span class="product-cat">${escapeHtmlAttr(item.product_id || "-")}</span>
 </td>
                     <td>${item.article || "-"}</td>
                     <td>${formatCurrency(item.unit_purchase_price ?? item.price ?? 0)}</td>
@@ -1020,7 +1030,7 @@ function initTooltips() {
         cell.addEventListener('mouseenter', (e) => {
             const tooltip = document.createElement('div');
             tooltip.className = 'dynamic-tooltip';
-            tooltip.textContent = 'Рекомендация основана на анализе продаж и текущих остатках';
+            tooltip.textContent = e.currentTarget.dataset.tooltip || 'Рекомендация пока не сформирована';
             tooltip.style.cssText = `
                 position: fixed;
                 background: #1e293b;
