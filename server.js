@@ -305,6 +305,28 @@ app.get("/api/result/:jobId/export.xlsx", async (req, res) => {
   }
 });
 
+app.post("/api/supplier-search", express.json(), async (req, res) => {
+  try {
+    const response = await fetch(`${FASTAPI_URL}/supplier-search/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+
+    const text = await response.text();
+    res.status(response.status);
+
+    try {
+      res.json(JSON.parse(text));
+    } catch {
+      res.send(text);
+    }
+  } catch (err) {
+    console.error("Ошибка поиска поставщиков:", err);
+    res.status(500).json({ error: "Ошибка поиска поставщиков" });
+  }
+});
+
 app.listen(port, "0.0.0.0", () => {
   console.log(`Frontend server running on port ${port}`);
 });
